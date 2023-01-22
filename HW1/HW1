@@ -1,0 +1,426 @@
+CODE    SEGMENT PARA 'CODE'
+        ASSUME CS:CODE, DS:DATA, SS:STAK
+	
+STAK    SEGMENT PARA STACK 'STACK'
+        DW 20 DUP(?)
+STAK    ENDS
+
+DATA    SEGMENT PARA 'DATA'
+PASSWORD  DB 4 DUP(?) ;array definition
+ISPASSWORD	DB 4 DUP(?) 
+MASTERKEYY DB 0,0,0,0
+ISLOCKED   DB 1 DUP(0) 
+DATA    ENDS
+
+
+START PROC
+
+MOV AX, DATA
+MOV DS, AX
+
+MOV AL, 081H ; CONTROL WORD
+OUT 0AEH, AL ; CW PORTUNA YAZILIR
+
+MOV ISLOCKED, 0
+XOR SI, SI
+
+
+TUS_BAS:
+   
+   CMP ISLOCKED, 1
+   JE L
+   CMP ISLOCKED, 0
+   JE U
+   
+U: MOV AL, 0C1H ; U
+   OUT 0A8H, AL ;
+   JMP LOCK_
+   
+L: MOV AL, 0C7H ; L
+   OUT 0A8H, AL ; 
+   JMP UNLOCK_
+   
+
+
+LOCK_:
+   MOV AL, 0FFH ; B PORTU
+   OUT 0AAH, AL ;
+   
+; birinci sütun
+   MOV AL, 11H
+   OUT 0AAH, AL ; B portuna yazma
+   IN AL, 0ACH ; C portunu okuma
+   
+   CMP AL, 01H ; 1 bastı mı
+   JZ TUS1
+   
+   CMP AL, 02H ; 4 bastı mı
+   JZ TUS4
+   
+   CMP AL, 04H ; 7 bastı mı
+   JZ TUS7
+   
+
+; ikinci sütun
+   MOV AL, 21H
+   OUT 0AAH, AL ; B portuna yazma
+   IN AL, 0ACH ; C portunu okuma
+   
+   CMP AL, 01H ; 2 bastı mı
+   JZ TUS2
+   
+   CMP AL, 02H ; 5 bastı mı
+   JZ TUS5
+   
+   CMP AL, 04H ; 8 bastı mı
+   JZ TUS8
+ 
+   CMP AL, 08H ; 0 bastı mı
+   JZ TUS0
+
+ 
+;üçüncü sütun
+   MOV AL, 41H
+   OUT 0AAH, AL ; B portuna yazma
+   IN AL, 0ACH ; C portunu okuma
+   
+   CMP AL, 01H ; 3 bastı mı
+   JZ TUS3
+   
+   CMP AL, 02H ; 6 bastı mı
+   JZ TUS6
+   
+   CMP AL, 04H ; 9 bastı mı
+   JZ TUS9
+   
+   CMP AL, 08H ; # bastı mı
+   JZ TUSD
+   
+   MOV DX, 0H ; flag: tuşa basılmadı
+   
+   JMP LOCK_
+      
+TUS0:
+   CMP DX, 1H ; tuş basılı olduğu sürece aşağısını okumaz (aynı sayıyı yeni eleman olarak almaz)
+   JZ TUS_BAS
+   MOV PASSWORD[SI], 0C0H
+   INC SI
+   CMP SI,4
+   JA FAZLA
+   MOV DX, 1H ; tuş kaydedildi, sadece ilk anı al
+   JMP LOCK_
+   
+TUS1:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV PASSWORD[SI], 0F9H
+   INC SI
+   CMP SI,4
+   JA FAZLA   
+   MOV DX, 1H
+   JMP LOCK_
+   
+TUS2:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV PASSWORD[SI], 0A4H
+   INC SI
+   CMP SI,4
+   JA FAZLA   
+   MOV DX, 1H
+   JMP LOCK_
+
+TUS3:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV PASSWORD[SI], 0B0H
+   INC SI
+   CMP SI,4
+   JA FAZLA   
+   MOV DX, 1H
+   JMP LOCK_
+   
+TUS4:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV PASSWORD[SI], 99H
+   INC SI
+   CMP SI,4
+   JA FAZLA   
+   MOV DX, 1H
+   JMP LOCK_
+   
+TUS5:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV PASSWORD[SI], 92H
+   INC SI
+   CMP SI,4
+   JA FAZLA   
+   MOV DX, 1H
+   JMP LOCK_
+
+TUS6:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV PASSWORD[SI], 82H
+   INC SI
+   CMP SI,4
+   JA FAZLA   
+   MOV DX, 1H
+   JMP LOCK_
+  
+TUS7:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV PASSWORD[SI], 0F8H
+   INC SI
+   CMP SI,4
+   JA FAZLA   
+   MOV DX, 1H
+   JMP LOCK_
+   
+TUS8:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV PASSWORD[SI], 80H
+   INC SI
+   CMP SI,4
+   JA FAZLA   
+   MOV DX, 1H
+   JMP LOCK_
+
+TUS9:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV PASSWORD[SI], 90H
+   INC SI
+   CMP SI,4
+   JA FAZLA   
+   MOV DX, 1H
+   JMP LOCK_
+   
+    
+ TUSD:   
+   CMP DX, 1H
+   CMP SI, 4
+   JNZ TUS_BAS
+   MOV ISLOCKED, 1
+   MOV DX, 1H
+   XOR SI, SI
+   JZ TUS_BAS
+   
+FAZLA: ;dörtten fazla giriş değeri olduğunda sistemi resetlemek için
+XOR SI, SI   
+JMP LOCK_
+  
+UNLOCK_:
+   XOR DI, DI
+   MOV ISLOCKED, 1
+   MOV AL, 0FFH ; B PORTU
+   OUT 0AAH, AL ;
+   
+; birinci sütun
+   MOV AL, 11H
+   OUT 0AAH, AL ; B portuna yazma
+   IN AL, 0ACH ; C portunu okuma
+   
+   CMP AL, 01H ; 1 bastı mı
+   JZ T1
+   
+   CMP AL, 02H ; 4 bastı mı
+   JZ T4
+   
+   CMP AL, 04H ; 7 bastı mı
+   JZ T7
+   
+
+; ikinci sütun
+   MOV AL, 21H
+   OUT 0AAH, AL ; B portuna yazma
+   IN AL, 0ACH ; C portunu okuma
+   
+   CMP AL, 01H ; 2 bastı mı
+   JZ T2
+   
+   CMP AL, 02H ; 5 bastı mı
+   JZ T5
+   
+   CMP AL, 04H ; 8 bastı mı
+   JZ T8
+ 
+   CMP AL, 08H ; 0 bastı mı
+   JZ T0
+
+ 
+; üçüncü sütun
+   MOV AL, 41H
+   OUT 0AAH, AL ; B portuna yazma
+   IN AL, 0ACH ; C portunu okuma
+   
+   CMP AL, 01H ; 3 bastı mı
+   JZ T3
+   
+   CMP AL, 02H ; 6 bastı mı
+   JZ T6
+   
+   CMP AL, 04H ; 9 bastı mı
+   JZ T9
+   
+   MOV DX, 0H ; flag: tuşa basılmadı
+   
+   JMP TUS_BAS
+
+
+T0:
+   CMP DX, 1H ; tuş basılı olduğu sürece aşağısını okumaz (aynı sayıyı yeni eleman olarak almaz)
+   JZ TUS_BAS
+   MOV ISPASSWORD[SI], 0C0H
+   INC SI
+   CMP SI, 4
+   MOV DX, 1H ; tuş kaydedildi, sadece ilk anı al
+   JZ CONTROL
+   JMP TUS_BAS
+   
+T1:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV ISPASSWORD[SI], 0F9H
+   INC SI
+   CMP SI, 4
+   MOV DX, 1H
+   JZ CONTROL
+   JMP TUS_BAS
+   
+T2:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV ISPASSWORD[SI], 0A4H
+   INC SI
+   CMP SI, 4
+   MOV DX, 1H
+   JZ CONTROL
+   JMP TUS_BAS
+
+T3:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV ISPASSWORD[SI], 0B0H
+   INC SI
+   CMP SI, 4
+   MOV DX, 1H
+   JZ CONTROL
+   JMP TUS_BAS
+   
+T4:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV ISPASSWORD[SI], 99H
+   INC SI
+   CMP SI, 4
+   MOV DX, 1H
+   JZ CONTROL
+   JMP TUS_BAS
+   
+T5:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV ISPASSWORD[SI], 92H
+   INC SI
+   CMP SI, 4
+   MOV DX, 1H
+   JZ CONTROL
+   JMP TUS_BAS
+
+T6:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV ISPASSWORD[SI], 82H
+   INC SI
+   CMP SI, 4
+   MOV DX, 1H
+   JZ CONTROL
+   JMP TUS_BAS
+  
+T7:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV ISPASSWORD[SI], 0F8H
+   INC SI
+   CMP SI, 4
+   MOV DX, 1H
+   JZ CONTROL
+   JMP TUS_BAS
+   
+T8:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV ISPASSWORD[SI], 80H
+   INC SI
+   CMP SI, 4
+   MOV DX, 1H
+   JZ CONTROL
+   JMP TUS_BAS
+
+T9:
+   CMP DX, 1H
+   JZ TUS_BAS
+   MOV ISPASSWORD[SI], 90H
+   INC SI
+   CMP SI, 4
+   MOV DX, 1H
+   JZ CONTROL
+   JMP TUS_BAS
+
+CONTROL:   
+   LEA SI, PASSWORD ;dizinin başlangıç noktasını SI'ya atıyoruz
+   LEA DI, ISPASSWORD ;
+   MOV CL,0
+   
+KIYAS: 
+   MOV AL, [SI]
+   MOV BL, [DI]
+   CMP AL, BL
+   JNE SON
+   INC SI
+   INC DI
+   INC CL
+   CMP CL, 4
+   JZ UNLOCKING
+   JMP KIYAS
+
+
+SON: 
+   LEA SI, MASTERKEYY ;masterkey ile eşitlik durumuna bakıyoruz
+   LEA DI, ISPASSWORD ;
+   XOR CL, CL
+   
+ISMASTER: 
+   MOV AL, [SI]
+   MOV BL, [DI]
+   CMP AL, BL
+   JNE SONSON
+   INC SI
+   INC DI
+   INC CL
+   CMP CL, 4
+   JZ UNLOCKING
+   JMP ISMASTER   
+   
+ SONSON:  
+   XOR SI, SI 
+   MOV DX, 0
+   MOV ISLOCKED , 1
+   JMP TUS_BAS
+
+UNLOCKING:
+    MOV ISLOCKED , 0
+    JMP TUS_BAS
+      
+
+RET
+START ENDP
+
+
+CODE    ENDS
+        END START
